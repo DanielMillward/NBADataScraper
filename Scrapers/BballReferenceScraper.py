@@ -20,7 +20,9 @@ class BballReferenceScraper(BaseScraper):
         # 1. Iterate through basketball-reference.com/players/a...z, Get all players in bold
         # Get the player URLs\
         base_url = "https://www.basketball-reference.com/players/"
-        player_urls = self.get_player_urls(base_url, sleep_lower=0.5, sleep_higher=1, start="s")
+        player_urls = self.get_player_urls(
+            base_url, sleep_lower=0.5, sleep_higher=1, start="s"
+        )
         game_log_urls_list = []
         raw_urls = []
 
@@ -35,34 +37,28 @@ class BballReferenceScraper(BaseScraper):
                 raw_urls.extend(game_logs)
             time.sleep(1)
             print(self.get_player_id(url))
-            file_path = "player_list2.json"
+            file_path = "player_list.json"
             try:
-                with open(file_path, 'r') as file:
+                with open(file_path, "r") as file:
                     existing_data = json.load(file)
             except FileNotFoundError:
                 pass  # File doesn't exist yet
             existing_data.append(output)
-            with open(file_path, 'w') as file:
+            with open(file_path, "w") as file:
                 json.dump(existing_data, file, indent=4)
 
             print("Data saved to", file_path)
         self.pages = raw_urls
 
     def page_scrape(self, url):
+        url_prefix = "https://www.basketball-reference.com"
+        for game_log in url["game_logs"]:
+            data = self.game_log_scrape(url_prefix+game_log)
+
+        return data, self.get_player_id(url)
+
+    def game_log_scrape(self, log_url):
         pass
-        # get page id
-        pattern = r"/players/([a-z]+)/([a-z0-9]+)\.html"
-        player_id = re.search(pattern, url).group(2)
-        if not player_id:
-            print("Could not get id for", url)
-
-        # get the gamelog urls
-
-        time.sleep(0.5)
-        # for each url, grab the data
-
-        # return data, page_id
-        return None, player_id
 
     def get_game_log(self, soup, url):
         player_id = self.get_player_id(url)
