@@ -13,10 +13,9 @@ class BaseScraper():
     
     def scrape(self):
         """Saves data in self.data"""
-        raise NotImplementedError("Base Class - scrape")
-        # - for page in pages:
-		#- pagedata = pagescrape(page)
-		# - data\[page.id] = pagedata
+        for url in self.pages:
+            pagedata, id = self.page_scrape(url)
+            self.data[id] = pagedata
     
-    def page_scrape(self):
-        raise NotImplementedError("Base Class")
+    def page_scrape(self, url):
+        raise NotImplementedError("Base Class - pagescrape")
