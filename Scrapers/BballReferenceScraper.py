@@ -48,16 +48,16 @@ class BballReferenceScraper(BaseScraper):
                 json.dump(existing_data, file, indent=4)
 
             print("Data saved to", file_path)
-        self.pages = raw_urls
+        self.pages = game_log_urls_list
 
     def page_scrape(self, url):
         url_prefix = "https://www.basketball-reference.com"
         for game_log in url["game_logs"]:
-            data = self.game_log_scrape(url_prefix+game_log)
+            data = self.game_log_scrape(url_prefix+game_log, file_path="")
 
         return data, self.get_player_id(url)
 
-    def game_log_scrape(self, log_url):
+    def game_log_scrape(self, log_url, file_path):
         pass
 
     def get_game_log(self, soup, url):
