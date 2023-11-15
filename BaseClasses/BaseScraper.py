@@ -6,7 +6,7 @@ class BaseScraper():
             self.pages = self.get_pages()
         else:
             self.pages = player_list
-        self.scrape()
+        #self.scrape()
 
     def get_pages(self, players_urls=None):
         raise NotImplementedError("Base Class - get_pages")

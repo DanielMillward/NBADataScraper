@@ -21,7 +21,7 @@ class BballReferenceScraper(BaseScraper):
         # Get the player URLs\
         base_url = "https://www.basketball-reference.com/players/"
         player_urls = self.get_player_urls(
-            base_url, sleep_lower=0.5, sleep_higher=1, start="s"
+            base_url, sleep_lower=0.5, sleep_higher=1, start="a"
         )
         game_log_urls_list = []
         raw_urls = []
@@ -49,16 +49,6 @@ class BballReferenceScraper(BaseScraper):
 
             print("Data saved to", file_path)
         self.pages = game_log_urls_list
-
-    def page_scrape(self, url):
-        url_prefix = "https://www.basketball-reference.com"
-        for game_log in url["game_logs"]:
-            data = self.game_log_scrape(url_prefix+game_log, file_path="")
-
-        return data, self.get_player_id(url)
-
-    def game_log_scrape(self, log_url, file_path):
-        pass
 
     def get_game_log(self, soup, url):
         player_id = self.get_player_id(url)

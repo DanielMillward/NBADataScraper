@@ -7,16 +7,16 @@ Scraping basketball-reference into a local sql database
 - output: sql database
 3. Run slap_into_csv which puts sql into a zipped csv. Just a big sql query. Takes date param
 - output: zipped csv
-3. Run train_model in notebook using zipped csv
+4. Run train_model in notebook using zipped csv
 - output: trained tft
 ___
-4. Run current_data_scrape, which scrapes only the most recent urls
+5. Run current_data_scrape, which scrapes only the most recent urls
 - output: sql database
-5. Run slap_into_csv
+6. Run slap_into_csv
 - output: csv
-6. Run predict_with_model in notebook, download the distributions json, for each individual player category
+7. Run predict_with_model in notebook, download the distributions json, for each individual player category
 - output: players_predictions.json
-7. Run make_lineups, which makes lineups that maximize probability of being over a set of scores
+8. Run make_lineups, which makes lineups that maximize probability of being over a set of scores
 - output: good_lineups.json
-8. Run final_lineup, which does a MCMC kinda thing and see which of the make_lineups lineups has the highest win rate
+9. Run final_lineup, which does a MCMC kinda thing and see which of the make_lineups lineups has the highest win rate
 - output: best_lineup.json
