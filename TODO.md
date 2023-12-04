@@ -1,9 +1,2 @@
-[ ] convert @'s and 0's to True and False in homeGame column
+[ ] make a column was_home based on the @ sign
 
-[ ] clean bio data
-
-[ ] add columns (double double, triple double)
-
-[ ] add db code
-
-[ ] add finals to scraping

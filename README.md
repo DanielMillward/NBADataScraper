@@ -26,6 +26,7 @@ predict_with_model
 - where: Colab
 - takes: csv, json of available players + games data
 - output: json of player scores predictions
+- NOTE: Here we do the triple double / double double stuff based on the sampling
 
 - make_lineups
 - where: Colab?
