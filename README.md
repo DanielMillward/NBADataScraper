@@ -7,6 +7,12 @@ https://github.com/swar/nba_api/tree/master/docs/nba_api/stats/endpoints
 - Data from injury
 https://www.prosportstransactions.com/basketball/Search/Search.php
 
+Notes:
+
+- We don't check for games where a player doesn't play since those are marked "out" beforehand. See
+https://help.draftkings.com/hc/en-us/articles/4405229777555-What-happens-if-one-of-the-players-in-my-roster-doesn-t-play-or-has-their-game-cancelled-US-
+
+
 update_db:
 - where: local
 - takes: past csv file
