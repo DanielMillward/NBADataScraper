@@ -120,13 +120,13 @@ def add_injury_data(players_csv, data_csv_name, testing, wait_seconds=1):
             response = requests.get(url_to_call)
             soup = BeautifulSoup(response.content, "html.parser")
             table = soup.find("table", class_="datatable center")
-            table_dataframes = pd.read_html(str(table))
-            df = table_dataframes[0]
-            print(df)
+            table_dataframes = pd.read_html(str(table), header=0)
+            page_df = table_dataframes[0]
         else:
             print("failed to get data for", url)
     # for each row in injury data, find player and whether it was to injury or not
-
+        for _, row in page_df:
+            
     # for every row in data with player, if date is later (start from day after!), update days_since_injury
     # AND last_injury_type
     data.to_csv(data_csv_name, index=False)
