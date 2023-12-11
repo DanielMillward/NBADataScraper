@@ -58,7 +58,14 @@ def add_nba_api_data(players_csv, data_csv_name, testing, wait_seconds=1):
         # wait before next request to not get rate limited
         data.drop_duplicates(subset=["player_id", "game_id"], inplace=True)
         data.to_csv(data_csv_name, index=False)
-        outtext = "Added data for" + row["full_name"] + str(counter+1) + "/" + str(len(players))
+        outtext = (
+            "Added data for "
+            + row["full_name"]
+            + " "
+            + str(counter)
+            + "/"
+            + str(len(players))
+        )
         print(outtext)
         time.sleep(wait_seconds)
 
@@ -95,6 +102,7 @@ def find_matching_id(injury_row, keyword_df):
 
 
 def add_injury_data(players_csv, data_csv_name, testing, wait_seconds=1):
+    # testing=False
     # get number of pages to iterate through - find start date?
     data = pd.read_csv(data_csv_name)
 
@@ -144,6 +152,8 @@ def add_injury_data(players_csv, data_csv_name, testing, wait_seconds=1):
             print("failed to get data for", url)
         # for each row in injury data, find player and whether it was to injury or not
         # Date, Team, Acquired, Relinquished, Notes
+        page_df["matching_id"] = None
+        page_df["injury_type"] = None
         for injury_index, injury_row in page_df.iterrows():
             for _, row in players.iterrows():
                 if isinstance(injury_row["Relinquished"], str) and isinstance(
@@ -176,16 +186,21 @@ def add_injury_data(players_csv, data_csv_name, testing, wait_seconds=1):
             filtered_df["days_since_last_injury"] = (
                 filtered_df["GAME_DATE"] - ref_date
             ).dt.days
-            # for each of those rows, set type of last injury
             filtered_df["type_of_last_injury"] = injury_row["injury_type"]
-            data.update(filtered_df)
+            data.loc[
+                filtered_df.index, ["days_since_last_injury", "type_of_last_injury"]
+            ] = filtered_df[["days_since_last_injury", "type_of_last_injury"]]
+            print("Added injury data for", ref_id)
 
+    data.drop_duplicates(subset=["player_id", "game_id"], inplace=True)
     data.to_csv(data_csv_name, index=False)
     return data_csv_name
 
 
 def turn_game_id_to_time_idx(data_csv_name):
-    raise NotImplementedError("do this")
+    raise NotImplementedError(
+        "check if there's a game_id of 0, if not do the conversion."
+    )
 
 
 def add_did_play_column(data_csv_name):
