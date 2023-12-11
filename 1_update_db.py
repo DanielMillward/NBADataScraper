@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 import requests
 from dateutil.parser import parse
 import datetime
+from io import StringIO
 
 
 def get_active_players():
@@ -57,7 +58,8 @@ def add_nba_api_data(players_csv, data_csv_name, testing, wait_seconds=1):
         # wait before next request to not get rate limited
         data.drop_duplicates(subset=["player_id", "game_id"], inplace=True)
         data.to_csv(data_csv_name, index=False)
-        print("Added data for", row["full_name"])
+        outtext = "Added data for" + row["full_name"] + str(counter+1) + "/" + str(len(players))
+        print(outtext)
         time.sleep(wait_seconds)
 
     data = pd.read_csv(data_csv_name)
@@ -123,7 +125,7 @@ def add_injury_data(players_csv, data_csv_name, testing, wait_seconds=1):
     counter = 0
     all_injuries = pd.DataFrame(columns=["Date", "matching_id", "injury_type"])
     for url in urls:
-        out_string = str(counter + 1) + "/" + str(len(urls))
+        out_string = "Adding injury page " + str(counter + 1) + "/" + str(len(urls))
         print(out_string)
         if counter > 3 and testing:
             break
@@ -135,7 +137,7 @@ def add_injury_data(players_csv, data_csv_name, testing, wait_seconds=1):
             response = requests.get(url_to_call)
             soup = BeautifulSoup(response.content, "html.parser")
             table = soup.find("table", class_="datatable center")
-            table_dataframes = pd.read_html(str(table), header=0)
+            table_dataframes = pd.read_html(StringIO(str(table)), header=0)
             page_df = table_dataframes[0]
             page_df["Date"] = pd.to_datetime(page_df["Date"].apply(clean_date))
         else:
@@ -155,23 +157,28 @@ def add_injury_data(players_csv, data_csv_name, testing, wait_seconds=1):
                             page_df.at[injury_index, "matching_id"] = row["id"]
                             page_df.at[injury_index, "injury_type"] = "Not DTD"
         page_df = page_df[page_df["matching_id"].notna()]
-        all_injuries = pd.concat([all_injuries, page_df], ignore_index=True)
+        if not all_injuries.empty:
+            all_injuries = pd.concat([all_injuries, page_df], ignore_index=True)
+        else:
+            all_injuries = pd.concat([page_df], ignore_index=True)
 
     # For row in all injuries:
+    all_injuries = all_injuries.sort_values(by="Date")
+
     for _, injury_row in all_injuries.iterrows():
         # For just the data rows with matching id AND are later:
         ref_date = pd.to_datetime(injury_row["Date"])
-        ref_id = injury_row["matching_id"] 
+        ref_id = int(injury_row["matching_id"])
         filtered_df = data[data["GAME_DATE"] > ref_date]
-        filtered_df = data[data["player_id"] == ref_id] Fix this!
+        filtered_df = data[data["player_id"] == ref_id]
         # Calculate the number of days since the reference date
-        filtered_df["Days_Since_Last_Injury"] = (
-            filtered_df["GAME_DATE"] - ref_date
-        ).dt.days
-        # Update the original DataFrame with the calculated values
-        data.update(filtered_df)
-    # for each of those rows, set time since last
-    # for each of those rows, set type of last injury
+        if not filtered_df.empty:
+            filtered_df["days_since_last_injury"] = (
+                filtered_df["GAME_DATE"] - ref_date
+            ).dt.days
+            # for each of those rows, set type of last injury
+            filtered_df["type_of_last_injury"] = injury_row["injury_type"]
+            data.update(filtered_df)
 
     data.to_csv(data_csv_name, index=False)
     return data_csv_name
