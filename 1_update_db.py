@@ -1,3 +1,4 @@
+import math
 import time
 from nba_api.stats.static import players
 from nba_api.stats.endpoints import playergamelog
@@ -102,7 +103,7 @@ def find_matching_id(injury_row, keyword_df):
 
 
 def add_injury_data(players_csv, data_csv_name, testing, wait_seconds=1):
-    # testing=False
+    testing = False
     # get number of pages to iterate through - find start date?
     data = pd.read_csv(data_csv_name)
 
@@ -172,6 +173,8 @@ def add_injury_data(players_csv, data_csv_name, testing, wait_seconds=1):
         else:
             all_injuries = pd.concat([page_df], ignore_index=True)
 
+        time.sleep(wait_seconds)
+
     # For row in all injuries:
     all_injuries = all_injuries.sort_values(by="Date")
 
@@ -179,38 +182,84 @@ def add_injury_data(players_csv, data_csv_name, testing, wait_seconds=1):
         # For just the data rows with matching id AND are later:
         ref_date = pd.to_datetime(injury_row["Date"])
         ref_id = int(injury_row["matching_id"])
+        ref_injury_type = injury_row["injury_type"]
         filtered_df = data[data["GAME_DATE"] > ref_date]
         filtered_df = data[data["player_id"] == ref_id]
         # Calculate the number of days since the reference date
-        if not filtered_df.empty:
-            filtered_df["days_since_last_injury"] = (
-                filtered_df["GAME_DATE"] - ref_date
-            ).dt.days
-            filtered_df["type_of_last_injury"] = injury_row["injury_type"]
-            data.loc[
-                filtered_df.index, ["days_since_last_injury", "type_of_last_injury"]
-            ] = filtered_df[["days_since_last_injury", "type_of_last_injury"]]
-            print("Added injury data for", ref_id)
+        for data_idx, data_row in filtered_df.iterrows():
+            days_since_injury = (data_row["GAME_DATE"] - ref_date).dt.days
+            if days_since_injury < 0:
+                data.loc[data_idx, "days_since_last_injury"] = math.inf
+            else:
+                data.loc[data_idx, "days_since_last_injury"] = days_since_injury
+            data.loc[data_idx, "type_of_last_injury"] = ref_injury_type
+            print(ref_id, "had an injury")
 
     data.drop_duplicates(subset=["player_id", "game_id"], inplace=True)
     data.to_csv(data_csv_name, index=False)
     return data_csv_name
 
 
+def make_time_idx(game_id, min_id):
+    return game_id - min_id
+
+
 def turn_game_id_to_time_idx(data_csv_name):
-    raise NotImplementedError(
-        "check if there's a game_id of 0, if not do the conversion."
-    )
+    data = pd.read_csv(data_csv_name)
+
+    min_game_id = data["game_id"].min()
+    data["time_idx"] = data["game_id"].apply(make_time_idx, min_id=min_game_id)
+
+    data.drop_duplicates(subset=["player_id", "game_id"], inplace=True)
+    data.to_csv(data_csv_name, index=False)
+    return data_csv_name
 
 
-def add_did_play_column(data_csv_name):
-    raise NotImplementedError(
-        "add a played/not played column, check holiday implementation"
-    )
+def apply_home(matchup):
+    if "vs." in matchup:
+        return matchup.split(" vs. ")[0]
+    elif "@" in matchup:
+        return matchup.split(" @ ")[1]
+
+
+def apply_away(matchup):
+    if "vs." in matchup:
+        return matchup.split(" vs. ")[1]
+    elif "@" in matchup:
+        return matchup.split(" @ ")[0]
+
+
+def add_teams_playing_column(data_csv_name):
+    """Add home and away team columns"""
+    data = pd.read_csv(data_csv_name)
+    data["home_team"] = data["MATCHUP"].apply(apply_home)
+    data["away_team"] = data["MATCHUP"].apply(apply_away)
+
+    data.drop_duplicates(subset=["player_id", "game_id"], inplace=True)
+    data.to_csv(data_csv_name, index=False)
+    return data_csv_name
+
+
+def apply_which_team(matchup):
+    if "vs." in matchup:
+        return matchup.split(" vs. ")[0]
+    elif "@" in matchup:
+        return matchup.split(" @ ")[0]
+
+
+def add_which_team_column(data_csv_name):
+    data = pd.read_csv(data_csv_name)
+    data["team"] = data["MATCHUP"].apply(apply_which_team)
+    data["was_home"] = False
+    data.loc[data["team"] == data["home_team"], "was_home"] = True
+
+    data.drop_duplicates(subset=["player_id", "game_id"], inplace=True)
+    data.to_csv(data_csv_name, index=False)
+    return data_csv_name
 
 
 def clean_up_data(data_csv_name):
-    raise NotImplementedError("remove columns, etc")
+    df = df.drop("VIDEO_AVAILABLE", axis=1)
 
 
 if __name__ == "__main__":
@@ -218,7 +267,16 @@ if __name__ == "__main__":
     testing = True
 
     # get active players, store in a csv
-    columns = ["player_id", "game_id", "days_since_injury", "last_injury_type"]
+    columns = [
+        "player_id",
+        "game_id",
+        "days_since_last_injury",
+        "type_of_last_injury",
+        "home_team",
+        "away_team",
+        "team",
+        "was_home",
+    ]
     data_csv_name = "data.csv"
 
     players_csv = get_active_players()
@@ -227,5 +285,6 @@ if __name__ == "__main__":
     data_csv_name = add_injury_data(players_csv, data_csv_name, testing)
 
     data_csv_name = turn_game_id_to_time_idx(data_csv_name)
-    data_csv_name = add_did_play_column(data_csv_name)
+    data_csv_name = add_teams_playing_column(data_csv_name)
+    data_csv_name = add_which_team_column(data_csv_name)
     data_csv_name = clean_up_data(data_csv_name)
