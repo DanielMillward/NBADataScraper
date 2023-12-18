@@ -33,7 +33,7 @@ def add_nba_api_data(players_csv, data_csv_name, testing, wait_seconds=1):
     counter = 0
     for _, row in players.iterrows():
         # cut short for testing
-        if counter > 3:
+        if counter > 3 and testing:
             break
         counter += 1
 
@@ -189,14 +189,14 @@ def add_injury_data(players_csv, data_csv_name, testing, wait_seconds=1):
         filtered_df = data[data["GAME_DATE"] > ref_date]
         filtered_df = data[data["player_id"] == ref_id]
         # Calculate the number of days since the reference date & update data
+        print("Adding injuries to data...")
         for data_idx, data_row in filtered_df.iterrows():
-            days_since_injury = (data_row["GAME_DATE"] - ref_date).dt.days
+            days_since_injury = (data_row["GAME_DATE"] - ref_date).days
             if days_since_injury < 0:
                 data.loc[data_idx, "days_since_last_injury"] = math.inf
             else:
                 data.loc[data_idx, "days_since_last_injury"] = days_since_injury
             data.loc[data_idx, "type_of_last_injury"] = ref_injury_type
-            print(ref_id, "had an injury")
 
     # fillna
     data["days_since_last_injury"] = data["days_since_last_injury"].fillna(math.inf)
@@ -308,7 +308,7 @@ def clean_up_data(data_csv_name):
 
 if __name__ == "__main__":
     # only do 3 players for testing
-    testing = True
+    testing = False
 
     # get active players, store in a csv
     columns = [
@@ -325,8 +325,8 @@ if __name__ == "__main__":
     player_csv_name = "players.csv"
 
     players_csv = get_active_players(player_csv_name)
-    data_csv_name = instantiate_data_if_needed(data_csv_name, columns)
-    data_csv_name = add_nba_api_data(players_csv, data_csv_name, testing)
+    #data_csv_name = instantiate_data_if_needed(data_csv_name, columns)
+    #data_csv_name = add_nba_api_data(players_csv, data_csv_name, testing)
     data_csv_name = add_injury_data(players_csv, data_csv_name, testing)
 
     data_csv_name = turn_game_id_to_time_idx(data_csv_name)
