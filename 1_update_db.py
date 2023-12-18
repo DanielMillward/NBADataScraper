@@ -1,4 +1,5 @@
 import math
+import sys
 import time
 from nba_api.stats.static import players
 from nba_api.stats.endpoints import playergamelog
@@ -11,6 +12,7 @@ import requests
 from dateutil.parser import parse
 import datetime
 from io import StringIO
+import tqdm
 
 
 def get_active_players(player_csv_name):
@@ -66,10 +68,12 @@ def add_nba_api_data(players_csv, data_csv_name, testing, wait_seconds=1):
             + str(counter)
             + "/"
             + str(len(players))
+            + " "
         )
-        print(outtext)
+        print(" " * 80, end="\r", flush=True)
+        print(outtext, end="\r", flush=True)
         time.sleep(wait_seconds)
-
+    print()
     data = pd.read_csv(data_csv_name)
     data.drop_duplicates(subset=["player_id", "game_id"], inplace=True)
     data.to_csv(data_csv_name, index=False)
@@ -103,15 +107,14 @@ def find_matching_id(injury_row, keyword_df):
 
 
 def add_injury_data(players_csv, data_csv_name, testing, wait_seconds=1):
-    # get number of pages to iterate through - find start date?
+    # get correct date data
     data = pd.read_csv(data_csv_name)
-
     data["GAME_DATE"] = data["GAME_DATE"].apply(clean_date)
     data["GAME_DATE"] = pd.to_datetime(data["GAME_DATE"])
 
+    # make initial url request
     earliest_date = data["GAME_DATE"].min().strftime("%Y-%m-%d")
     players = pd.read_csv(players_csv)
-
     url = (
         "https://www.prosportstransactions.com/basketball/Search/SearchResults.php?Player=&Team=&BeginDate="
         + earliest_date
@@ -119,6 +122,7 @@ def add_injury_data(players_csv, data_csv_name, testing, wait_seconds=1):
     )
     response = requests.get(url)
 
+    # get all page links
     if response.status_code == 200:
         soup = BeautifulSoup(response.content, "html.parser")
         links = soup.find_all(
@@ -129,17 +133,17 @@ def add_injury_data(players_csv, data_csv_name, testing, wait_seconds=1):
         print(f"Failed to retrieve content. Status code: {response.status_code}")
         raise ValueError("cant read main page!")
 
-    # for each page
+    # for each page, scrape relevant data
     counter = 0
     all_injuries = pd.DataFrame(columns=["Date", "matching_id", "injury_type"])
     for url in urls:
-        out_string = "Adding injury page " + str(counter + 1) + "/" + str(len(urls))
-        print(out_string)
+        out_string = ("Adding injury page " + str(counter + 1) + "/" + str(len(urls)) + " ")
+        print(out_string, end="\r")
         if counter > 3 and testing:
             break
         counter += 1
         # https://www.prosportstransactions.com/basketball/Search/SearchResults.php?Player=&Team=&BeginDate=2022-12-21&EndDate=&InjuriesChkBx=yes&Submit=Search
-        # scrape the data and store in dataframe with datetime column
+        # call page, read table & add clean date
         url_to_call = "https://www.prosportstransactions.com/basketball/Search/" + url
         if response.status_code == 200:
             response = requests.get(url_to_call)
@@ -150,8 +154,7 @@ def add_injury_data(players_csv, data_csv_name, testing, wait_seconds=1):
             page_df["Date"] = pd.to_datetime(page_df["Date"].apply(clean_date))
         else:
             print("failed to get data for", url)
-        # for each row in injury data, find player and whether it was to injury or not
-        # Date, Team, Acquired, Relinquished, Notes
+        # If find player match in a row, add matching id and injury type in page_df
         page_df["matching_id"] = None
         page_df["injury_type"] = None
         for injury_index, injury_row in page_df.iterrows():
@@ -166,6 +169,8 @@ def add_injury_data(players_csv, data_csv_name, testing, wait_seconds=1):
                         else:
                             page_df.at[injury_index, "matching_id"] = row["id"]
                             page_df.at[injury_index, "injury_type"] = "Not DTD"
+
+        # add injuries to all_injuries
         page_df = page_df[page_df["matching_id"].notna()]
         if not all_injuries.empty:
             all_injuries = pd.concat([all_injuries, page_df], ignore_index=True)
@@ -174,17 +179,16 @@ def add_injury_data(players_csv, data_csv_name, testing, wait_seconds=1):
 
         time.sleep(wait_seconds)
 
-    # For row in all injuries:
+    # For row in all injuries, update relevant rows in data
     all_injuries = all_injuries.sort_values(by="Date")
-
     for _, injury_row in all_injuries.iterrows():
-        # For just the data rows matching the injury player_id AND are later:
+        # Find just the data rows matching the injury player_id AND are later:
         ref_date = pd.to_datetime(injury_row["Date"])
         ref_id = int(injury_row["matching_id"])
         ref_injury_type = injury_row["injury_type"]
         filtered_df = data[data["GAME_DATE"] > ref_date]
         filtered_df = data[data["player_id"] == ref_id]
-        # Calculate the number of days since the reference date
+        # Calculate the number of days since the reference date & update data
         for data_idx, data_row in filtered_df.iterrows():
             days_since_injury = (data_row["GAME_DATE"] - ref_date).dt.days
             if days_since_injury < 0:
@@ -194,9 +198,11 @@ def add_injury_data(players_csv, data_csv_name, testing, wait_seconds=1):
             data.loc[data_idx, "type_of_last_injury"] = ref_injury_type
             print(ref_id, "had an injury")
 
+    # fillna
     data["days_since_last_injury"] = data["days_since_last_injury"].fillna(math.inf)
     data["type_of_last_injury"] = data["type_of_last_injury"].fillna(math.inf)
 
+    print()
     data.drop_duplicates(subset=["player_id", "game_id"], inplace=True)
     data.to_csv(data_csv_name, index=False)
     return data_csv_name
