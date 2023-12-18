@@ -3,6 +3,7 @@ import time
 from nba_api.stats.static import players
 from nba_api.stats.endpoints import playergamelog
 from nba_api.stats.library.parameters import SeasonAll
+from nba_api.stats.endpoints import leaguegamefinder
 import csv
 import pandas as pd
 from bs4 import BeautifulSoup
@@ -12,16 +13,15 @@ import datetime
 from io import StringIO
 
 
-def get_active_players():
-    filename = "players.csv"
+def get_active_players(player_csv_name):
     active_players_array_of_dicts = players.get_active_players()
     field_names = active_players_array_of_dicts[0].keys()
-    with open(filename, mode="w", newline="") as csv_file:
+    with open(player_csv_name, mode="w", newline="") as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames=field_names)
         writer.writeheader()
         writer.writerows(active_players_array_of_dicts)
 
-    return filename
+    return player_csv_name
 
 
 def add_nba_api_data(players_csv, data_csv_name, testing, wait_seconds=1):
@@ -103,7 +103,6 @@ def find_matching_id(injury_row, keyword_df):
 
 
 def add_injury_data(players_csv, data_csv_name, testing, wait_seconds=1):
-    testing = False
     # get number of pages to iterate through - find start date?
     data = pd.read_csv(data_csv_name)
 
@@ -179,7 +178,7 @@ def add_injury_data(players_csv, data_csv_name, testing, wait_seconds=1):
     all_injuries = all_injuries.sort_values(by="Date")
 
     for _, injury_row in all_injuries.iterrows():
-        # For just the data rows with matching id AND are later:
+        # For just the data rows matching the injury player_id AND are later:
         ref_date = pd.to_datetime(injury_row["Date"])
         ref_id = int(injury_row["matching_id"])
         ref_injury_type = injury_row["injury_type"]
@@ -195,6 +194,9 @@ def add_injury_data(players_csv, data_csv_name, testing, wait_seconds=1):
             data.loc[data_idx, "type_of_last_injury"] = ref_injury_type
             print(ref_id, "had an injury")
 
+    data["days_since_last_injury"] = data["days_since_last_injury"].fillna(math.inf)
+    data["type_of_last_injury"] = data["type_of_last_injury"].fillna(math.inf)
+
     data.drop_duplicates(subset=["player_id", "game_id"], inplace=True)
     data.to_csv(data_csv_name, index=False)
     return data_csv_name
@@ -207,11 +209,15 @@ def make_time_idx(game_id, min_id):
 def turn_game_id_to_time_idx(data_csv_name):
     data = pd.read_csv(data_csv_name)
 
-    min_game_id = data["game_id"].min()
-    data["time_idx"] = data["game_id"].apply(make_time_idx, min_id=min_game_id)
+    data["game_id_str"] = data["game_id"].astype(str).str[1:]
 
-    data.drop_duplicates(subset=["player_id", "game_id"], inplace=True)
+    data = data.sort_values(by="game_id_str")
+
+    data["time_idx"] = range(len(data))
+
+    del data["game_id_str"]
     data.to_csv(data_csv_name, index=False)
+
     return data_csv_name
 
 
@@ -258,8 +264,40 @@ def add_which_team_column(data_csv_name):
     return data_csv_name
 
 
+def apply_game_type(season_id):
+    first_digit = str(season_id)[0]
+    switch_dict = {
+        "1": "preseason",
+        "2": "regular",
+        "3": "allstar",
+        "4": "postseason",
+        "5": "playin",
+    }
+
+    return switch_dict.get(first_digit, "Unknown")
+
+
+def add_game_type(data_csv_name):
+    # https://github.com/swar/nba_api/issues/220
+    # 1 = pre season
+    # 2 = regular
+    # 3 = all star
+    # 4 = finals/playoffs, post-season
+    # 5 = play-in
+
+    data = pd.read_csv(data_csv_name)
+    data["game_type"] = data["SEASON_ID"].apply(apply_game_type)
+
+    data.to_csv(data_csv_name, index=False)
+    return data_csv_name
+
+
 def clean_up_data(data_csv_name):
-    df = df.drop("VIDEO_AVAILABLE", axis=1)
+    data = pd.read_csv(data_csv_name)
+    data = data.drop("VIDEO_AVAILABLE", axis=1)
+
+    data.to_csv(data_csv_name, index=False)
+    return data_csv_name
 
 
 if __name__ == "__main__":
@@ -278,8 +316,9 @@ if __name__ == "__main__":
         "was_home",
     ]
     data_csv_name = "data.csv"
+    player_csv_name = "players.csv"
 
-    players_csv = get_active_players()
+    players_csv = get_active_players(player_csv_name)
     data_csv_name = instantiate_data_if_needed(data_csv_name, columns)
     data_csv_name = add_nba_api_data(players_csv, data_csv_name, testing)
     data_csv_name = add_injury_data(players_csv, data_csv_name, testing)
@@ -287,4 +326,6 @@ if __name__ == "__main__":
     data_csv_name = turn_game_id_to_time_idx(data_csv_name)
     data_csv_name = add_teams_playing_column(data_csv_name)
     data_csv_name = add_which_team_column(data_csv_name)
+    data_csv_name = add_game_type(data_csv_name)
+    # add was finals??
     data_csv_name = clean_up_data(data_csv_name)
