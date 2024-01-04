@@ -8,9 +8,16 @@
 4. Grab DraftKings data - which players are playing, their positions, and their costs.
 5. Genetic Algorithm for best lineup, fitness based on 1000 (?) simulations per generation. For each simulation, give each lineup a ranking. At the end, pick the top 50% of lineups. Idk.
 
+Future improvements:
+- Make separate models for pts, ast, reb, etc?
+- add minutes played as input
+- Group by player position
+- do stochastic knapsack code for step 5
+
 
 ___
 
+https://www.draftkings.com/help/rules/nba 
 
 Scraping basketball-reference into a local sql database
 

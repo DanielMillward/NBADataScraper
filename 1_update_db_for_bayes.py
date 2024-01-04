@@ -238,6 +238,72 @@ def clean_up_data(data_csv_name):
     return data_csv_name
 
 
+def appFunc_double_double(row):
+    num_double = 0
+    if row["points"] >= 10:
+        num_double += 1
+    if row["rebounds"] >= 10:
+        num_double += 1
+    if row["assists"] >= 10:
+        num_double += 1
+    if row["steals"] >= 10:
+        num_double += 1
+    if row["blocks"] >= 10:
+        num_double += 1
+
+    if num_double >= 2:
+        return 1
+    return 0
+
+
+def appFunc_triple_double(row):
+    num_double = 0
+    if row["points"] >= 10:
+        num_double += 1
+    if row["rebounds"] >= 10:
+        num_double += 1
+    if row["assists"] >= 10:
+        num_double += 1
+    if row["steals"] >= 10:
+        num_double += 1
+    if row["blocks"] >= 10:
+        num_double += 1
+
+    if num_double >= 3:
+        return 1
+    return 0
+
+
+def add_double_triple_double(data_csv_name):
+    data = pd.read_csv(data_csv_name)
+    data["double_double"] = data.apply(appFunc_double_double, axis=1)
+    data["triple_double"] = data.apply(appFunc_triple_double, axis=1)
+    data.to_csv(data_csv_name, index=False)
+    return data_csv_name
+
+
+def appFunc_dfs_points(row):
+    total_score = 0
+    total_score += row["points"]
+    total_score += row["3_pointers"] * 0.5
+    total_score += row["rebounds"] * 1.25
+    total_score += row["assists"] * 1.5
+    total_score += row["steals"] * 2
+    total_score += row["blocks"] * 2
+    total_score -= row["turnovers"] * 0.5
+    
+    total_score += row["double_double"] * 1.5
+    total_score += row["triple_double"] * 3
+
+    return total_score
+
+def add_dfs_points(data_csv_name):
+    data = pd.read_csv(data_csv_name)
+    data["dfs_points"] = data.apply(appFunc_dfs_points, axis=1)
+    data.to_csv(data_csv_name, index=False)
+    return data_csv_name
+
+
 if __name__ == "__main__":
     # only do 3 players for testing
 
@@ -260,7 +326,10 @@ if __name__ == "__main__":
     data_csv_name = "bayesdata.csv"
     player_csv_name = "players.csv"
 
-    players_csv = get_active_players(player_csv_name, testing, grab_fresh_players)
+    # players_csv = get_active_players(player_csv_name, testing, grab_fresh_players)
 
-    data_csv_name = add_nba_api_data(player_csv_name, data_csv_name, columns, testing)
-    # data_csv_name = clean_up_data(data_csv_name)
+    # data_csv_name = add_nba_api_data(player_csv_name, data_csv_name, columns, testing)
+
+    data_csv_name = add_double_triple_double(data_csv_name)
+
+    data_csv_name = add_dfs_points(data_csv_name)
