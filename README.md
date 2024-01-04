@@ -1,4 +1,17 @@
 # NBADataScraper
+
+## Newest approach
+
+1. Gather data
+2. Make a bayesian model for points, assists, rebounds, etc.
+3. If not done in step 1, make a single distribution for each player for potential DFS points.
+4. Grab DraftKings data - which players are playing, their positions, and their costs.
+5. Genetic Algorithm for best lineup, fitness based on 1000 (?) simulations per generation. For each simulation, give each lineup a ranking. At the end, pick the top 50% of lineups. Idk.
+
+
+___
+
+
 Scraping basketball-reference into a local sql database
 
 How to integrate all the data together?
