@@ -1,5 +1,13 @@
 # NBADataScraper
 
+## Newest newest approach
+
+1. Get bayesian simulations for each player
+2. Get the top X players for each position based on mean, X depending on time & resources
+3. For each possible lineup, simulate N outcomes. 
+4. Find the M lineups that have the highest mean? Can change this at some point
+
+
 ## Newest approach
 
 1. Gather data
@@ -9,6 +17,7 @@
 5. Genetic Algorithm for best lineup, fitness based on 1000 (?) simulations per generation. For each simulation, give each lineup a ranking. At the end, pick the top 50% of lineups. Idk.
 
 Future improvements:
+- do multiple populations at the same time
 - set mu_a to be find_constrained_priors
 - make different models for points, assists, etc. and sample from all at the end
 - change gamma hyperpriors to normal
