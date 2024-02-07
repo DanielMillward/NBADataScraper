@@ -2,6 +2,7 @@
 
 ## Newest newest approach
 
+0. Make nice dataframe of contest csv with id and one hot encoding for positions?
 1. Get bayesian simulations for each player
 2. Get the top X players for each position based on mean, X depending on time & resources
 3. For each possible lineup, simulate N outcomes. 
